@@ -1,0 +1,12 @@
+version: '3'
+
+services:   
+  load_test:
+    build: ./load_test
+    command: python -m load_test.functions.run_it
+    environment:
+      - TOKEN=<your_token>
+    logging:
+      driver: json-file
+    volumes:
+      - ./load_test:/code
