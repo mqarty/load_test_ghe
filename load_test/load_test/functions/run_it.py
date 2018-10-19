@@ -31,7 +31,8 @@ def _create_git_directory(directory, repo, filename):
     # call('echo "{} try" > {}'.format(repo, filename), shell=True)
     # call('git add {}'.format(filename), shell=True)
 
-def _git_commit_push(repo):
+def _git_commit_push(r, *args, **kwargs):
+    repo = kwargs.get('repo')
     logger.info("_git_commit_push :: {}".format(repo))
     # call('git commit -m "Try {}/{} times"'.format(repo, repo), shell=True)
     # call('git remote add origin git@ghe-dev.sphereci.com:george/{}.git'.format(repo), shell=True)
@@ -40,17 +41,19 @@ def _git_commit_push(repo):
 def main():
     num = 2
     directory = os.getcwd()+"/"
-    filename = 'try-num-times.txt'.format(num)
+    filename = "try-num-times.txt".format(num)
 
     url = "https://ghe-dev.sphereci.com/{}".format(USERS_REPOS_URI)
     header = {"Authorization": "token {}".format(os.environ['TOKEN'])}
 
+    for repo in xrange(0, num):
+        _create_git_directory(directory, repo, filename)
+
     rs = (
-        grequests.post(
-            url, 
-            headers=header, 
-            payload={'name': str(repo)}, 
-            hooks={'pre_request':_create_git_directory(directory, repo, filename), 'post_request': _git_commit_push(repo)}
+        grequests.get(
+            url,
+            headers=header,
+            hooks={'response': _git_commit_push},
             ) for repo in xrange(0, num)
         )
     
