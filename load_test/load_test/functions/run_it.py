@@ -50,9 +50,10 @@ def main():
         _create_git_directory(directory, repo, filename)
 
     rs = (
-        grequests.get(
+        grequests.post(
             url,
             headers=header,
+            data={'name': str(repo)},
             hooks={'response': _git_commit_push},
             ) for repo in xrange(0, num)
         )
