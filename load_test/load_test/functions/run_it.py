@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 USERS_REPOS_URI = "/api/v3/user/repos" # /rest/api/2/issue/{issue_key}?expand=changelog"
 
 
+def hook_factory(*factory_args, **factory_kwargs):
+    def response_hook(response, *request_args, **request_kwargs):
+        repo = factory_kwargs.get('repo')
+        return _git_commit_push(repo)
+    return response_hook
+
 def _create_git_directory(directory, repo, filename):
     logger.info("_create_git_directory :: {}/{}/{}".format(directory, repo, filename))
     # os.chdir(directory)
@@ -30,12 +36,6 @@ def _create_git_directory(directory, repo, filename):
     # call ('pwd', shell=True)
     # call('echo "{} try" > {}'.format(repo, filename), shell=True)
     # call('git add {}'.format(filename), shell=True)
-
-def hook_factory(*factory_args, **factory_kwargs):
-    def response_hook(response, *request_args, **request_kwargs):
-        repo = factory_kwargs.get('repo')
-        return _git_commit_push(repo)
-    return response_hook
 
 def _git_commit_push(repo):
     logger.info("_git_commit_push :: repo={}".format(repo))
