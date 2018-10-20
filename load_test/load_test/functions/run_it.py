@@ -20,12 +20,13 @@ USERS_REPOS_URI = "/api/v3/user/repos" # /rest/api/2/issue/{issue_key}?expand=ch
 
 def hook_factory(*factory_args, **factory_kwargs):
     def response_hook(response, *request_args, **request_kwargs):
+        directory = factory_kwargs.get('directory')
         repo = factory_kwargs.get('repo')
-        return _git_commit_push(repo)
+        return _git_commit_push(directory, repo)
     return response_hook
 
 def _create_git_directory(directory, repo, filename):
-    logger.info("_create_git_directory :: {}/{}/{}".format(directory, repo, filename))
+    logger.info("_create_git_directory with the following :: {}/{}/{}".format(directory, repo, filename))
     # os.chdir(directory)
 
     # call ('git init {}'.format(repo), shell=True)
@@ -37,21 +38,22 @@ def _create_git_directory(directory, repo, filename):
     # call('echo "{} try" > {}'.format(repo, filename), shell=True)
     # call('git add {}'.format(filename), shell=True)
 
-def _git_commit_push(repo):
-    logger.info("_git_commit_push :: repo={}".format(repo))
+def _git_commit_push(directory, repo):
+    logger.info("_git_commit_push with the following :: directory={} repo={}".format(directory, repo))
+    # os.chdir(directory+str(repo))
     # call('git commit -m "Try {}/{} times"'.format(repo, repo), shell=True)
     # call('git remote add origin git@ghe-dev.sphereci.com:george/{}.git'.format(repo), shell=True)
     # call('git push -u origin master', shell=True)
 
 def main():
-    num = 2
-    directory = os.getcwd()+"/"
-    filename = "try-num-times.txt".format(num)
-
-    url = "https://ghe-dev.sphereci.com/{}".format(USERS_REPOS_URI)
+    number_of_repos = int(os.environ['NUMBER_OF_REPOS'])
+    filename =  os.environ['FILENAME'].format(number_of_repos)
+    url = "{}{}".format(os.environ['GITHUB_URI'], USERS_REPOS_URI)
     header = {"Authorization": "token {}".format(os.environ['TOKEN'])}
 
-    for repo in xrange(0, num):
+    directory = os.getcwd()+"/"
+
+    for repo in xrange(0, number_of_repos):
         _create_git_directory(directory, repo, filename)
 
     rs = (
@@ -59,8 +61,8 @@ def main():
             url,
             headers=header,
             data={'name': str(repo)},
-            hooks={'response': [hook_factory(repo=repo)]},            
-            ) for repo in xrange(0, num)
+            hooks={'response': [hook_factory(directory=directory, repo=repo)]},            
+            ) for repo in xrange(0, number_of_repos)
         )
     
     results = grequests.map(rs)

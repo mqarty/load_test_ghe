@@ -6,6 +6,9 @@ services:
     command: python -m load_test.functions.run_it
     environment:
       - TOKEN=<your_token>
+      - GITHUB_URI=https://www.google.com
+      - NUMBER_OF_REPOS=5
+      - FILENAME=try-num-times.txt
     logging:
       driver: json-file
     volumes:
