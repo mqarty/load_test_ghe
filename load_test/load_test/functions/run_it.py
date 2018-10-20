@@ -31,9 +31,14 @@ def _create_git_directory(directory, repo, filename):
     # call('echo "{} try" > {}'.format(repo, filename), shell=True)
     # call('git add {}'.format(filename), shell=True)
 
-def _git_commit_push(r, *args, **kwargs):
-    repo = kwargs.get('repo')
-    logger.info("_git_commit_push :: {}".format(repo))
+def hook_factory(*factory_args, **factory_kwargs):
+    def response_hook(response, *request_args, **request_kwargs):
+        repo = factory_kwargs.get('repo')
+        return _git_commit_push(repo)
+    return response_hook
+
+def _git_commit_push(repo):
+    logger.info("_git_commit_push :: repo={}".format(repo))
     # call('git commit -m "Try {}/{} times"'.format(repo, repo), shell=True)
     # call('git remote add origin git@ghe-dev.sphereci.com:george/{}.git'.format(repo), shell=True)
     # call('git push -u origin master', shell=True)
@@ -54,7 +59,7 @@ def main():
             url,
             headers=header,
             data={'name': str(repo)},
-            hooks={'response': _git_commit_push},
+            hooks={'response': [hook_factory(repo=repo)]},            
             ) for repo in xrange(0, num)
         )
     
