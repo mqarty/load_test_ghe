@@ -68,6 +68,8 @@ def main():
     results = grequests.map(rs)
 
     logger.info(results)
+
+    # Prob should do a cleanup
   
 if __name__== "__main__":
     main()
