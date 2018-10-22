@@ -48,12 +48,11 @@ def _git_commit_push(directory, repo):
     # call('git push -u origin master', shell=True)
 
 def main():
+    directory = os.getcwd()+"/"    
     number_of_repos = int(os.environ['NUMBER_OF_REPOS'])
     filename =  os.environ['FILENAME'].format(number_of_repos)
     
     header = {"Authorization": "token {}".format(os.environ['TOKEN'])}
-
-    directory = os.getcwd()+"/"
 
     rs = (
         grequests.post(
