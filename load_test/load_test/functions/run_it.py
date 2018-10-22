@@ -15,7 +15,7 @@ from subprocess import call
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-USERS_REPOS_URI = "/api/v3/user/repos" # /rest/api/2/issue/{issue_key}?expand=changelog"
+USERS_REPOS_URI = "/api/v3/user/repos"
 
 
 def hook_factory(*factory_args, **factory_kwargs):
@@ -38,6 +38,8 @@ def _create_git_directory(directory, repo, filename):
     # call('echo "{} try" > {}'.format(repo, filename), shell=True)
     # call('git add {}'.format(filename), shell=True)
 
+    return "{}{}".format(os.environ['GITHUB_URI'], USERS_REPOS_URI)
+
 def _git_commit_push(directory, repo):
     logger.info("_git_commit_push with the following :: directory={} repo={}".format(directory, repo))
     # os.chdir(directory+str(repo))
@@ -48,17 +50,14 @@ def _git_commit_push(directory, repo):
 def main():
     number_of_repos = int(os.environ['NUMBER_OF_REPOS'])
     filename =  os.environ['FILENAME'].format(number_of_repos)
-    url = "{}{}".format(os.environ['GITHUB_URI'], USERS_REPOS_URI)
+    
     header = {"Authorization": "token {}".format(os.environ['TOKEN'])}
 
     directory = os.getcwd()+"/"
 
-    for repo in xrange(0, number_of_repos):
-        _create_git_directory(directory, repo, filename)
-
     rs = (
         grequests.post(
-            url,
+            _create_git_directory(directory, repo, filename), # removes one for loop
             headers=header,
             data={'name': str(repo)},
             hooks={'response': [hook_factory(directory=directory, repo=repo)]},            
