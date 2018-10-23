@@ -26,25 +26,25 @@ def hook_factory(*factory_args, **factory_kwargs):
 
 def _create_git_directory(directory, repo, filename):
     logger.info("_create_git_directory with the following :: {}/{}/{}".format(directory, repo, filename))
-    # os.chdir(directory)
+    
+    call('mkdir {}'.format(repo), shell=True)
+    os.chdir(directory+str(repo))
 
-    # call ('git init {}'.format(repo), shell=True)
-    # call ('cd {}'.format(repo), shell=True)
-    # logger.info("Directory :: {}".format(directory))
+    call ('git init {}'.format(repo), shell=True)
+    logger.info("Directory :: {}".format(directory))
 
-    # os.chdir(directory+str(repo))
-    # call ('pwd', shell=True)
-    # call('echo "{} try" > {}'.format(repo, filename), shell=True)
-    # call('git add {}'.format(filename), shell=True)
+    #call ('pwd', shell=True)
+    call('echo "{} try" > {}'.format(repo, filename), shell=True)
+    call('git add {}'.format(filename), shell=True)
 
     return "{}{}".format(os.environ['GITHUB_URI'], USERS_REPOS_URI)
 
 def _git_commit_push(directory, repo):
     logger.info("_git_commit_push with the following :: directory={} repo={}".format(directory, repo))
-    # os.chdir(directory+str(repo))
-    # call('git commit -m "Try {}/{} times"'.format(repo, repo), shell=True)
-    # call('git remote add origin git@ghe-dev.sphereci.com:george/{}.git'.format(repo), shell=True)
-    # call('git push -u origin master', shell=True)
+    os.chdir(directory+str(repo))
+    call('git commit -m "Try {}/{} times"'.format(repo, repo), shell=True)
+    call('git remote add origin git@ghe-dev.sphereci.com:{}/{}.git'.format(os.environ['GITHUB_USER_NAME'],repo), shell=True) # evn var
+    call('git push -u origin master', shell=True)
 
 def main():
     directory = os.getcwd()+"/"    
