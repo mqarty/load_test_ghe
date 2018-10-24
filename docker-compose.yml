@@ -6,10 +6,11 @@ services:
     command: python -m load_test.functions.run_it
     environment:
       - GITHUB_PROTOCOL=https
-      - GITHUB_HOSTNAME=ghe-dev.sphereci.com
-      - GITHUB_USER_OR_ORG_NAME=testgeorge
-      - GITHUB_TOKEN=<your_token>
-      - NUMBER_OF_REPOS=5
+      - GITHUB_HOSTNAME=<github.com>
+      - GITHUB_USER_OR_ORG_NAME=
+      - GITHUB_USERNAME=
+      - GITHUB_TOKEN=
+      - NUMBER_OF_REPOS=1
       - FILENAME=try-num-times.txt
     logging:
       driver: json-file
