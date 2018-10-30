@@ -3,70 +3,108 @@
 
 import base64
 import grequests
+import json
 import logging
 import logging.handlers
 import os
 import requests
+import shutil
 import sys
 
 from subprocess import call
+from tempfile import mkdtemp
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(
+    format='%(asctime)s %(levelname)-8s %(message)s',
+    level=logging.DEBUG,
+    datefmt='%Y-%m-%d %H:%M:%S')
 logger = logging.getLogger(__name__)
 
-USERS_REPOS_URI = "/api/v3/user/repos"
+USERS_REPOS_URI = "/user/repos"
 
 
 def hook_factory(*factory_args, **factory_kwargs):
     def response_hook(response, *request_args, **request_kwargs):
-        directory = factory_kwargs.get('directory')
         repo = factory_kwargs.get('repo')
-        return _git_commit_push(directory, repo)
+        return _git_steps(repo)
     return response_hook
 
-def _create_git_directory(directory, repo, filename):
-    logger.info("_create_git_directory with the following :: {}/{}/{}".format(directory, repo, filename))
-    
-    call('mkdir {}'.format(repo), shell=True)
-    os.chdir(directory+str(repo))
+def _git_steps(repo):
+    repo = str(repo)
+    filename =  os.environ['FILENAME'].format(repo)
 
-    call ('git init {}'.format(repo), shell=True)
-    logger.info("Directory :: {}".format(directory))
+    logger.info("_git_steps with the following :: {}, {}".format(repo, filename))
 
-    #call ('pwd', shell=True)
-    call('echo "{} try" > {}'.format(repo, filename), shell=True)
-    call('git add {}'.format(filename), shell=True)
+    old_wd = os.getcwd()
 
-    return "{}{}".format(os.environ['GITHUB_URI'], USERS_REPOS_URI)
+    try:
+        # Fix this section
+        repo_dir = mkdtemp()
+        os.chdir(repo_dir)
 
-def _git_commit_push(directory, repo):
-    logger.info("_git_commit_push with the following :: directory={} repo={}".format(directory, repo))
-    os.chdir(directory+str(repo))
-    call('git commit -m "Try {}/{} times"'.format(repo, repo), shell=True)
-    call('git remote add origin git@ghe-dev.sphereci.com:{}/{}.git'.format(os.environ['GITHUB_USER_NAME'],repo), shell=True) # evn var
-    call('git push -u origin master', shell=True)
+        call ('git init', shell=True)
+
+        logger.debug("Repo directory :: {} ".format(os.getcwd()))
+
+        file_path = '{}/{}'.format(repo_dir, filename)
+
+        with open(file_path, "w") as tmp:
+            tmp.write('{} try {}'.format(repo, filename))
+
+        call('git add {}'.format(file_path), shell=True)
+
+        commit_message = "Try {}/{} times".format(repo, repo)
+        call('git -c user.name="test" -c user.email="test@email.org" commit -m "{}"'.format(commit_message), shell=True)
+
+        https_git_uri = '{protocol}://{username}:{token}@{hostname}/{user_or_org}/{repo_name}.git'.format(**{
+            'protocol': os.environ['GITHUB_PROTOCOL'],
+            'username': os.environ['GITHUB_USERNAME'],
+            'token': os.environ['GITHUB_TOKEN'],
+            'hostname': os.environ['GITHUB_HOSTNAME'],
+            'user_or_org': os.environ['GITHUB_USER_OR_ORG_NAME'],
+            'repo_name': repo
+        })
+        logger.debug("Github URI :: {}".format(https_git_uri))
+        call('git remote add origin {https_git_uri}'.format(**{
+            'https_git_uri': https_git_uri
+            }), shell=True)
+        call('git push -u origin master', shell=True)
+    except Exception as e:
+        logger.error(e)
+        raise e
+    finally:
+        logger.info("Cleaning up :: {} ".format(repo_dir))
+        os.chdir(old_wd)
+        shutil.rmtree(repo_dir)
 
 def main():
-    directory = os.getcwd()+"/"    
-    number_of_repos = int(os.environ['NUMBER_OF_REPOS'])
-    filename =  os.environ['FILENAME'].format(number_of_repos)
-    
-    header = {"Authorization": "token {}".format(os.environ['TOKEN'])}
+    logger.info("being main()")
+        
+    URI = "{}://api.{}{}".format(os.environ['GITHUB_PROTOCOL'], os.environ['GITHUB_HOSTNAME'], USERS_REPOS_URI)
+    logger.info("Using URI :: {}".format(URI))
 
-    rs = (
+    header = {
+        "Authorization": "token {}".format(os.environ['GITHUB_TOKEN']),
+        "Accept": "application/vnd.github.v3.full+json"
+    }
+
+    rs = [
         grequests.post(
-            _create_git_directory(directory, repo, filename), # removes one for loop
+            URI,
             headers=header,
-            data={'name': str(repo)},
-            hooks={'response': [hook_factory(directory=directory, repo=repo)]},            
-            ) for repo in xrange(0, number_of_repos)
-        )
-    
+            data=json.dumps({
+                'name': str(repo),
+                'description': "This is the {} repo".format(repo),
+                'private': False
+            }),
+            hooks={'response': [hook_factory(repo=repo)]},
+            ) for repo in xrange(0, int(os.environ['NUMBER_OF_REPOS']))
+    ]
+
     results = grequests.map(rs)
 
-    logger.info(results)
-
-    # Prob should do a cleanup
+    for result in results:
+        logger.info(result.json())
   
 if __name__== "__main__":
     main()
